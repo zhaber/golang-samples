@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// [START functions_helloworld_get]
+// [START functions_helloworld_get_decorator]
 
 // Package helloworld provides a set of Cloud Functions samples.
 package helloworld
@@ -33,4 +33,4 @@ func helloGet(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Hello, World!")
 }
 
-// [END functions_helloworld_get]
+// [END functions_helloworld_get_decorator]
