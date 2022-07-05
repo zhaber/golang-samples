@@ -17,75 +17,56 @@ package managedwriter
 import (
 	"context"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/GoogleCloudPlatform/golang-samples/bigquery/snippets/bqtestutil"
-	"github.com/GoogleCloudPlatform/golang-samples/internal/testutil"
 )
 
-func TestPendingStream(t *testing.T) {
-	tc := testutil.SystemTest(t)
+func BenchmarkBQWriteAPI(b *testing.B) {
 	ctx := context.Background()
-
-	client, err := bigquery.NewClient(ctx, tc.ProjectID)
+	client, err := bigquery.NewClient(ctx, getProjectId())
 	if err != nil {
-		t.Fatal(err)
+		b.Fatal(err)
 	}
 	defer client.Close()
-
 	meta := &bigquery.DatasetMetadata{
-		Location: "US", // See https://cloud.google.com/bigquery/docs/locations
+		Location: "us-central1", // See https://cloud.google.com/bigquery/docs/locations
 	}
 	testDatasetID, err := bqtestutil.UniqueBQName("snippet_managedwriter_tests")
 	if err != nil {
-		t.Fatalf("couldn't generate unique resource name: %v", err)
+		b.Fatalf("couldn't generate unique resource name: %v", err)
 	}
 	if err := client.Dataset(testDatasetID).Create(ctx, meta); err != nil {
-		t.Fatalf("failed to create test dataset: %v", err)
+		b.Fatalf("failed to create test dataset: %v", err)
 	}
-	// Cleanup dataset at end of test.
-	defer client.Dataset(testDatasetID).DeleteWithContents(ctx)
+	defer client.Dataset(testDatasetID).DeleteWithContents(ctx) // Cleanup table at end of test.
 
-	testTableID, err := bqtestutil.UniqueBQName("testtable")
-	if err != nil {
-		t.Fatalf("couldn't generate unique table id: %v", err)
-	}
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			pendingSchemaSmall := bigquery.Schema{
+				{Name: "bool_col", Type: bigquery.BooleanFieldType},
+				{Name: "float64_col", Type: bigquery.FloatFieldType},
+				{Name: "int64_col", Type: bigquery.IntegerFieldType},
+				{Name: "string_col", Type: bigquery.StringFieldType},
+			}
 
-	pendingSchema := bigquery.Schema{
-		{Name: "bool_col", Type: bigquery.BooleanFieldType},
-		{Name: "bytes_col", Type: bigquery.BytesFieldType},
-		{Name: "float64_col", Type: bigquery.FloatFieldType},
-		{Name: "int64_col", Type: bigquery.IntegerFieldType},
-		{Name: "string_col", Type: bigquery.StringFieldType},
-		{Name: "date_col", Type: bigquery.DateFieldType},
-		{Name: "datetime_col", Type: bigquery.DateTimeFieldType},
-		{Name: "geography_col", Type: bigquery.GeographyFieldType},
-		{Name: "numeric_col", Type: bigquery.NumericFieldType},
-		{Name: "bignumeric_col", Type: bigquery.BigNumericFieldType},
-		{Name: "time_col", Type: bigquery.TimeFieldType},
-		{Name: "timestamp_col", Type: bigquery.TimestampFieldType},
+			testTableIDSmall, err := bqtestutil.UniqueBQName("small")
+			if err != nil {
+				b.Fatalf("couldn't generate unique table id: %v", err)
+			}
 
-		{Name: "int64_list", Type: bigquery.IntegerFieldType, Repeated: true},
-		{Name: "struct_col", Type: bigquery.RecordFieldType,
-			Schema: bigquery.Schema{
-				{Name: "sub_int_col", Type: bigquery.IntegerFieldType},
-			}},
-		{Name: "struct_list", Type: bigquery.RecordFieldType, Repeated: true,
-			Schema: bigquery.Schema{
-				{Name: "sub_int_col", Type: bigquery.IntegerFieldType},
-			}},
-		{Name: "row_num", Type: bigquery.IntegerFieldType, Required: true},
-	}
+			if err := client.Dataset(testDatasetID).Table(testTableIDSmall).Create(ctx, &bigquery.TableMetadata{
+				Schema: pendingSchemaSmall,
+			}); err != nil {
+				b.Fatalf("failed to create destination table(%q %q): %v", testDatasetID, testTableIDSmall, err)
+			}
+			appendToStreamJson(ioutil.Discard, getProjectId(), testDatasetID, testTableIDSmall)
+		}
+	})
+}
 
-	if err := client.Dataset(testDatasetID).Table(testTableID).Create(ctx, &bigquery.TableMetadata{
-		Schema: pendingSchema,
-	}); err != nil {
-		t.Fatalf("failed to create destination table(%q %q): %v", testDatasetID, testTableID, err)
-	}
-
-	if err := appendToPendingStream(ioutil.Discard, tc.ProjectID, testDatasetID, testTableID); err != nil {
-		t.Errorf("appendToPendingStream(%q %q): %v", testDatasetID, testTableID, err)
-	}
-
+func getProjectId() string {
+	return os.Getenv("GOLANG_SAMPLES_PROJECT_ID")
 }
