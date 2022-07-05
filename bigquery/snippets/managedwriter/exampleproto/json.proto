@@ -1,0 +1,31 @@
+// Copyright 2022 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// The BigQuery Storage API expects protocol buffer data to be encoded in the
+// proto2 wire format. This allows it to disambiguate missing optional fields
+// from default values without the need for wrapper types.
+syntax = "proto2";
+package exampleproto;
+option go_package = "github.com/GoogleCloudPlatform/golang-samples/bigquery/managedwriter/exampleproto";
+
+// Define a message type representing the rows in your table.
+message JsonData {
+
+  // The following types map directly between protocol buffers and their
+  // corresponding BigQuery data types.
+  optional bool bool_col = 1;
+  optional double float64_col = 3;
+  optional int64 int64_col = 4;
+  optional string string_col = 5;
+}
