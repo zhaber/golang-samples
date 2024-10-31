@@ -9,5 +9,5 @@ require (
 	github.com/golang/protobuf v1.5.2
 	google.golang.org/api v0.74.0
 	google.golang.org/genproto v0.0.0-20220518221133-4f43b3371335
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/protobuf v1.33.0
 )
